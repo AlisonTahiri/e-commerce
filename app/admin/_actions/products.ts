@@ -60,7 +60,7 @@ const editSchema = addSchema.extend({
   image: imageSchema.optional(),
 });
 
-export async function updateProduct(
+export async function editProduct(
   id: string,
   prevState: unknown,
   formData: FormData
