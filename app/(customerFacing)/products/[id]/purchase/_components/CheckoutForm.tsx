@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/formatters";
+import { getBaseUrl } from "@/lib/utils";
 import {
   Elements,
   LinkAuthenticationElement,
@@ -104,7 +105,7 @@ function Form({
       .confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${process.env.NEXT_PUBLIC_SERVER_URL}/stripe/purchase-success`,
+          return_url: `${getBaseUrl()}/stripe/purchase-success`,
         },
       })
       .then(({ error }) => {
