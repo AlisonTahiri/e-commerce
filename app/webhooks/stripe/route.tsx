@@ -1,17 +1,20 @@
-import db from "@/app/db/db";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { Resend } from "resend";
+import db from "@/app/db/db";
+import PurchaseReceiptEmail from "@/app/email/PurchaseReceipt";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY as string);
 
 export async function POST(req: NextRequest) {
-  const event = stripe.webhooks.constructEvent(
+  const event = await stripe.webhooks.constructEvent(
     await req.text(),
     req.headers.get("stripe-signature") as string,
     process.env.STRIPE_WEBHOOK_SECRET as string
   );
+
+  console.log("webhook called");
 
   if (event.type === "charge.succeeded") {
     const charge = event.data.object;
@@ -19,19 +22,16 @@ export async function POST(req: NextRequest) {
     const email = charge.billing_details.email;
     const pricePaidInCents = charge.amount;
 
-    const product = await db.product.findUnique({
-      where: { id: productId },
-    });
+    console.log("charge succeeded...");
 
+    const product = await db.product.findUnique({ where: { id: productId } });
     if (product == null || email == null) {
       return new NextResponse("Bad Request", { status: 400 });
     }
 
     const userFields = {
       email,
-      orders: {
-        create: { productId, pricePaidInCents },
-      },
+      orders: { create: { productId, pricePaidInCents } },
     };
 
     const {
@@ -54,9 +54,15 @@ export async function POST(req: NextRequest) {
       from: `Support <${process.env.SENDER_EMAIL}>`,
       to: email,
       subject: "Order Confirmation",
-      react: <h1>Hi</h1>,
+      react: (
+        <PurchaseReceiptEmail
+          order={order}
+          product={product}
+          downloadVerificationId={downloadVerification.id}
+        />
+      ),
     });
-
-    return new NextResponse();
   }
+
+  return new NextResponse();
 }
